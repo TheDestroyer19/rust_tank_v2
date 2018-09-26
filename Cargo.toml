@@ -1,0 +1,6 @@
+[package]
+name = "rust_tank_v2"
+version = "0.1.0"
+authors = ["TheDestroyer19 <TheDestroyer19@bitbucket.org>"]
+
+[dependencies]
