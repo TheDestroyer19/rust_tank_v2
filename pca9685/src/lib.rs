@@ -60,6 +60,11 @@ impl PCA9685 {
 
         Ok(PCA9685 {dev: dev})
     }
+
+    pub fn default() -> Result<PCA9685, LinuxI2CError> {
+        PCA9685::new(PCA9685_ADDRESS)
+    }
+
     pub fn set_pwm_freq(&mut self, freq_hz: f32)
                         -> Result<(), LinuxI2CError> {
         let mut prescaleval = 25000000.0; //25MHz
@@ -125,11 +130,4 @@ impl PCA9685 {
     pub fn set_all_pwm_off(&mut self) -> Result<(), LinuxI2CError> {
         self.set_all_pwm(0, 4096)
     }
-}
-
-impl default for PCA9685 {
-    fn default() -> Result<PCA9685, LinuxI2CError> {
-        PCA9685::new(PCA9685_ADDRESS)
-    }
-
 }

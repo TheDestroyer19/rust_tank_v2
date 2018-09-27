@@ -19,7 +19,7 @@ use terminal::{ InputError};
 
 fn main() {
     //initialize hardware
-    pca9685::software_reset().unwrap();
+    pca9685::PCA9685::software_reset().unwrap();
     let mut motors = Motors::new().unwrap();
     motors.set_turret(0).unwrap();
     let mut sensors = Sensors::new().unwrap();
