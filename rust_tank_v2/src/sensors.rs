@@ -1,6 +1,3 @@
-extern crate mpu6050;
-extern crate floating_duration;
-
 use std::io;
 //use std::time::Duration;
 use std::time::SystemTime;

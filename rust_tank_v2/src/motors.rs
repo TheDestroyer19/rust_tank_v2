@@ -1,5 +1,3 @@
-extern crate pca9685;
-
 use pca9685::PCA9685;
 use std::io;
 

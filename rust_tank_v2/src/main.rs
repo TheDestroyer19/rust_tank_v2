@@ -2,6 +2,7 @@ extern crate pca9685;
 extern crate mpu6050;
 extern crate termion;
 extern crate floating_duration;
+extern crate i2cdev;
 
 use std::thread;
 use std::time::Duration;
@@ -9,6 +10,8 @@ use std::f32::consts::PI;
 
 use termion::event::Key;
 
+mod real_time_interface;
+//Old modules below
 mod motors;
 use motors::Motors;
 mod sensors;
@@ -17,7 +20,10 @@ mod hw_tests;
 mod terminal;
 use terminal::{ InputError};
 
+
 fn main() {
+
+
     //initialize hardware
     pca9685::PCA9685::software_reset().unwrap();
     let mut motors = Motors::new().unwrap();

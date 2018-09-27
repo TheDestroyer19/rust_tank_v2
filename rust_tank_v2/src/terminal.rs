@@ -1,5 +1,3 @@
-extern crate termion;
-
 use std::io;
 use std::io::{stdin, stdout, Stdout, Write};
 
@@ -42,7 +40,7 @@ impl Input {
             }
         });
 
-        Input {rx: rx}
+        Input {rx}
     }
 
     pub fn next(&mut self) -> Result<Option<Key>, InputError> {
