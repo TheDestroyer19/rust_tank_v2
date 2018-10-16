@@ -79,7 +79,8 @@ impl Output {
             ║ A/D - Turn Tank     ║    gy:         ║\r\n\
             ║ Q/E - Rotate turret ║    gz:         ║\r\n\
             ║  T  - Run HW tests  ║ pitch:         ║\r\n\
-            ║  X  - Exit          ║  roll:         ║\r\n\
+            ║                     ║  roll:         ║\r\n\
+            ║  X  - Exit          ║   yaw:         ║\r\n\
             ╠═════════════════════╩════════════════╣\r\n\
             ║ Speed:      Turn:      Turret:       ║\r\n\
             ╚══════════════════════════════════════╝",
@@ -91,7 +92,7 @@ impl Output {
     pub fn draw_sensors(&mut self, 
             (ax, ay, az): (f32, f32, f32),
             (gx, gy, gz): (f32, f32, f32), 
-            pitch: f32, roll: f32) -> io::Result<()> {
+            pitch: f32, roll: f32, yaw: f32) -> io::Result<()> {
         write!(self.out, "{}{:9.3}{}{:9.3}{}{:9.3}", 
             cursor::Goto(31,2), ax, 
             cursor::Goto(31,3), ay, 
@@ -100,9 +101,10 @@ impl Output {
             cursor::Goto(31,5), gx, 
             cursor::Goto(31,6), gy, 
             cursor::Goto(31,7), gz)?;
-        write!(self.out, "{}{:9.3}{}{:9.3}", 
+        write!(self.out, "{}{:9.3}{}{:9.3}{}{:9.3}",
             cursor::Goto(31,8), pitch, 
-            cursor::Goto(31,9), roll)?;
+            cursor::Goto(31,9), roll,
+            cursor::Goto(31,10), yaw)?;
         self.out.flush()?;
         Ok(())
     }
@@ -111,9 +113,9 @@ impl Output {
             speed: f32, turn: f32, turret: i32) 
             -> io::Result<()> {
         write!(self.out, "{}{:5}{}{:5}{}{:5}",
-            cursor::Goto(9, 11), speed,
-            cursor::Goto(20,11), turn,
-            cursor::Goto(33, 11), turret
+            cursor::Goto(9, 12), speed,
+            cursor::Goto(20,12), turn,
+            cursor::Goto(33, 12), turret
         )?;
         self.out.flush()?;
         Ok(())

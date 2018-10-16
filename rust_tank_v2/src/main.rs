@@ -10,24 +10,21 @@ use std::f32::consts::PI;
 
 use termion::event::Key;
 
-use real_time_interface::{RTHandle, RTCommand};
 
-mod real_time_interface;
-//Old modules below
-//mod motors;
-//use motors::Motors;
-//mod sensors;
-//use sensors::Sensors;
-//mod hw_tests;
 mod terminal;
 use terminal::{ InputError};
+
+mod hardware_interface;
+use hardware_interface::{RTHandle, RTCommand};
+//Old modules below
+//mod hw_tests;
 
 
 fn main() {
 
 
     //initialize hardware
-    let mut interface = real_time_interface::RTHandle::initialize().unwrap();
+    let mut interface = RTHandle::initialize().unwrap();
 
     match run(&mut interface) {
         Err(e) => println!("{}", e),
@@ -93,8 +90,9 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
         }
         output.draw_motors(speed, turn, degrees)?;
         output.draw_sensors(
-            interface.raw_state().accel, interface.raw_state().gyro,
-            interface.pitch() * 180.0 / PI, interface.roll() * 180.0 / PI,
+            interface.state().accel(), interface.state().gyro(),
+            interface.state().pitch() * 180.0 / PI, interface.state().roll() * 180.0 / PI,
+            interface.state().yaw(),
         )?;
         thread::sleep(Duration::from_millis(10));
     }
