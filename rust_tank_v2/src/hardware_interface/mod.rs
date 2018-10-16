@@ -8,6 +8,7 @@ use i2cdev::linux::LinuxI2CError;
 
 mod real_time;
 mod sensor_processing;
+mod drive_pid;
 
 pub use self::real_time::{RTCommand, RawSensorState};
 pub use self::sensor_processing::SensorState;
@@ -20,6 +21,7 @@ pub struct RTHandle {
     tx: Sender<RTCommand>,
     handle: JoinHandle<()>,
     sensor_state: SensorState,
+    drive_pid: drive_pid::DrivePid,
 }
 
 impl RTHandle {
@@ -32,36 +34,56 @@ impl RTHandle {
         let (handle, tx, rx)
             = real_time::create()?;
 
+        //TODO tune drive
+        let drive_pid = drive_pid::DrivePid::new(0.01, 0.0, 0.0);
+
         Ok(RTHandle {
             rx, tx,
             handle: handle,
             sensor_state: SensorState::default(),
+            drive_pid,
         })
     }
 
     /// Goes through all state updates received, and updates the current state
     /// Returns any IO errors that occured on the other thread since last call to update
+    /// Blocks until a message is received
     pub fn update(&mut self) -> Vec<LinuxI2CError> {
+
         let mut errors = vec![];
+        let mut next = match self.rx.recv() {
+            Ok(rss) => rss,
+            Err(_) => {
+                panic!("Real time thread aborted!");
+            }
+        };
         'queue: loop {
-            match self.rx.try_recv() {
-                Ok(Ok(new_state)) => {
+            match next {
+                Ok(new_state) => {
                     self.sensor_state.update(new_state);
+                    self.drive_pid.update(&self.sensor_state);
                 },
-                Ok(Err(err)) => {
+                Err(err) => {
                     errors.push(err);
-                },
-                Err(TryRecvError::Empty) => break 'queue, //pipe empty
+                }
+            }
+            next = match self.rx.try_recv() {
+                Ok(rss) => rss,
+                Err(TryRecvError::Empty) => break 'queue,
                 Err(TryRecvError::Disconnected) => {
                     panic!("Real time thread aborted!");
                 },
-            }
+            };
+        }
+        //now let things do updates that aren't retroactive
+        for msg in self.drive_pid.get_pwm_commands() {
+            self.send_command(msg);
         }
         errors
     }
 
     /// Sends a command to an I2C device
-    pub fn send_command(&mut self, command: RTCommand) {
+    fn send_command(&mut self, command: RTCommand) {
         //shouldn't panic unless the other thread terminates
         if let Err(_) =self.tx.send(command) {
             //TODO ensure motors are stopped
@@ -71,8 +93,18 @@ impl RTHandle {
         }
     }
 
+    pub fn set_drive(&mut self, power: f32, turn: f32) {
+        self.drive_pid.set_target(power, turn);
+    }
+
     pub fn state(&self) -> &SensorState {
         &self.sensor_state
+    }
+
+    /// Stops all the motors
+    pub fn stop(&mut self) {
+        self.drive_pid.set_target(0.0, 0.0);
+        self.send_command(RTCommand::StopAllMotors);
     }
 
     pub fn close(mut self) {

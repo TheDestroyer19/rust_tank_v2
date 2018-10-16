@@ -58,7 +58,7 @@ pub fn create() -> Result<(JoinHandle<()>, Sender<RTCommand>, Receiver<Result<Ra
     let (rt_tx, rx) = mpsc::channel();
     let (tx, rt_rx) = mpsc::channel();
     // setup the real time thread
-    //TODO ensure that this thread runs when its asked to.
+    //TODO consider setting system thread priority
     let handle = thread::spawn(|| real_time_loop(pca, mpu, rt_tx, rt_rx));
 
     Ok((handle, tx, rx))

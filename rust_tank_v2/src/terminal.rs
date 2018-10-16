@@ -79,7 +79,7 @@ impl Output {
             ║ A/D - Turn Tank     ║    gy:         ║\r\n\
             ║ Q/E - Rotate turret ║    gz:         ║\r\n\
             ║  T  - Run HW tests  ║ pitch:         ║\r\n\
-            ║                     ║  roll:         ║\r\n\
+            ║  Z  - Stop motors   ║  roll:         ║\r\n\
             ║  X  - Exit          ║   yaw:         ║\r\n\
             ╠═════════════════════╩════════════════╣\r\n\
             ║ Speed:      Turn:      Turret:       ║\r\n\

@@ -6,6 +6,8 @@ use super::real_time::RawSensorState;
 
 #[derive(Default)]
 pub struct SensorState {
+    /// The time between the most recent update and the previous
+    duration: Duration,
     raw_state: RawSensorState,
     roll: f32,
     yaw: f32,
@@ -21,6 +23,7 @@ impl SensorState {
         self.roll = y.atan2(z);
         self.pitch = (-x / (y * self.roll.sin() + z * self.roll.cos())).atan();
         self.yaw += new_state.gyro.2 * dt.as_fractional_secs() as f32;
+        self.duration = dt;
         self.raw_state = new_state;
     }
 
@@ -34,6 +37,10 @@ impl SensorState {
 
     pub fn yaw(&self) -> f32 {
         self.yaw
+    }
+
+    pub fn duration(&self) -> &Duration {
+        &self.duration
     }
 
     /// Returns the value from the gyro after conversion into deg/s
