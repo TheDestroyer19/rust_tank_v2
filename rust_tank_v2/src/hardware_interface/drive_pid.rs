@@ -3,7 +3,7 @@ use floating_duration::TimeAsFloat;
 use super::sensor_processing::SensorState;
 use super::real_time::RTCommand;
 
-//const BIAS: f32 = 0.001;
+const BIAS: f32 = 0.001;
 
 const MOT_LPWM: u8 = 15;
 const MOT_LA: u8 = 13;
@@ -51,15 +51,14 @@ impl DrivePid {
 
     pub fn update(&mut self,
                   sensors: &SensorState) {
-        //TODO reenable D component
         let dt = sensors.duration().as_fractional_secs() as f32;
         let actual = sensors.gyro().2;
         let error = self.target_deg_per_s - actual;
         self.integral += error * dt;
-        //let derivative = (error - self.prev_error) / dt;
+        let derivative = (error - self.prev_error) / dt;
         self.output = self.k_porportional * error
-            + self.k_integral * self.integral;
-            //+ self.k_derivative * derivative + BIAS;
+            + self.k_integral * self.integral
+            + self.k_derivative * derivative + BIAS;
         self.prev_error = error;
     }
 
@@ -80,10 +79,13 @@ impl DrivePid {
         });
 
         //setup right motor commands
+        //180 degrees out of phase
         commands.push(RTCommand::SetPwmOn(if rpow > 0.0 {MOT_RA} else {MOT_RB}));
         commands.push(RTCommand::SetPwmOff(if rpow > 0.0 {MOT_RB} else {MOT_RA}));
+        let off = (2048.0 + (4095.0 * rpow.abs()).max(1000.0)) as u16 % 4098 ;
+
         commands.push(RTCommand::SetPwm{
-            pwm: MOT_RPWM, on: 0, off: (4095.0 * rpow.abs()).max(1000.0) as u16,
+            pwm: MOT_RPWM, on: 2048, off,
         });
 
         commands

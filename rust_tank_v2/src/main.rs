@@ -58,13 +58,13 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
                     interface.set_drive(speed, turn);
                 },
                 Key::Char('d') => {
-                    turn -= 0.5;
-                    if turn < -20.0 {turn = -20.0; }
+                    turn -= 5.0;
+                    if turn < -45.0 {turn = -45.0; }
                     interface.set_drive(speed, turn);
                 },
                 Key::Char('a') => {
-                    turn += 0.5;
-                    if turn > 20.0 {turn = 20.0; }
+                    turn += 5.0;
+                    if turn > 45.0 {turn = 45.0; }
                     interface.set_drive(speed, turn);
                 },
                 Key::Char('z') => {
