@@ -39,7 +39,7 @@ impl RTHandle {
 
         Ok(RTHandle {
             rx, tx,
-            handle: handle,
+            handle,
             sensor_state: SensorState::default(),
             drive_pid,
         })
@@ -97,7 +97,7 @@ impl RTHandle {
         self.drive_pid.set_target(power, turn);
     }
 
-    pub fn state(&self) -> &SensorState {
+    pub fn sensor_state(&self) -> &SensorState {
         &self.sensor_state
     }
 

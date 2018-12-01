@@ -17,7 +17,6 @@ use terminal::{ InputError};
 mod hardware_interface;
 use hardware_interface::{RTHandle};
 //Old modules below
-//mod hw_tests;
 
 
 fn main() {
@@ -90,9 +89,9 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
         }
         output.draw_motors(speed, turn, degrees)?;
         output.draw_sensors(
-            interface.state().accel(), interface.state().gyro(),
-            interface.state().pitch() * 180.0 / PI, interface.state().roll() * 180.0 / PI,
-            interface.state().yaw(),
+            interface.sensor_state().accel(), interface.sensor_state().gyro(),
+            interface.sensor_state().pitch() * 180.0 / PI, interface.sensor_state().roll() * 180.0 / PI,
+            interface.sensor_state().yaw(),
         )?;
         thread::sleep(Duration::from_millis(16));
     }
