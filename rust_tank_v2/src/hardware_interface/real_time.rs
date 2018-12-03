@@ -27,6 +27,7 @@ pub enum RTCommand {
     //TODO consider creating an enum fof each i2c device individually
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct RawSensorState {
     pub time: SystemTime,
     pub gyro: (f32, f32, f32),

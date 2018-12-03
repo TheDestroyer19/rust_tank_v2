@@ -3,6 +3,9 @@ extern crate mpu6050;
 extern crate termion;
 extern crate floating_duration;
 extern crate i2cdev;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
+extern crate serde_json;
 
 use std::thread;
 use std::time::Duration;
@@ -16,6 +19,7 @@ use terminal::{ InputError};
 
 mod hardware_interface;
 use hardware_interface::{RTHandle};
+mod tcp_interface;
 //Old modules below
 
 
@@ -23,14 +27,14 @@ fn main() {
 
 
     //initialize hardware
-    let mut interface = RTHandle::initialize().unwrap();
+    let mut hw_interface = RTHandle::initialize().unwrap();
 
-    match run(&mut interface) {
+    match run(&mut hw_interface) {
         Err(e) => println!("{}", e),
         _ => (),
     };
 
-    interface.close();
+    hw_interface.close();
 }
 
 fn run(interface: &mut RTHandle) -> std::io::Result<()> {
