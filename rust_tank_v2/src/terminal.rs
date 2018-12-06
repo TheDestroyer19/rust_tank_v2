@@ -14,6 +14,8 @@ use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 use termion::{clear, color, cursor, style};
 
+use i2csensors::Vec3;
+
 pub fn new() -> io::Result<(Input, Output)> {
     let output = Output::new()?;
     let input = Input::new();
@@ -90,17 +92,17 @@ impl Output {
     }
 
     pub fn draw_sensors(&mut self, 
-            (ax, ay, az): (f32, f32, f32),
-            (gx, gy, gz): (f32, f32, f32), 
+            acc: Vec3,
+            gyro: Vec3,
             pitch: f32, roll: f32, yaw: f32) -> io::Result<()> {
         write!(self.out, "{}{:9.3}{}{:9.3}{}{:9.3}", 
-            cursor::Goto(31,2), ax, 
-            cursor::Goto(31,3), ay, 
-            cursor::Goto(31,4), az)?;
+            cursor::Goto(31,2), acc.x,
+            cursor::Goto(31,3), acc.y,
+            cursor::Goto(31,4), acc.z)?;
         write!(self.out, "{}{:9.3}{}{:9.3}{}{:9.3}", 
-            cursor::Goto(31,5), gx, 
-            cursor::Goto(31,6), gy, 
-            cursor::Goto(31,7), gz)?;
+            cursor::Goto(31,5), gyro.x,
+            cursor::Goto(31,6), gyro.y,
+            cursor::Goto(31,7), gyro.z)?;
         write!(self.out, "{}{:9.3}{}{:9.3}{}{:9.3}",
             cursor::Goto(31,8), pitch, 
             cursor::Goto(31,9), roll,

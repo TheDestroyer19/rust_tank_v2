@@ -3,6 +3,8 @@ extern crate mpu6050;
 extern crate termion;
 extern crate floating_duration;
 extern crate i2cdev;
+extern crate i2cdev_bno055;
+extern crate i2csensors;
 
 use std::thread;
 use std::time::Duration;

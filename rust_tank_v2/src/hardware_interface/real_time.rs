@@ -5,10 +5,13 @@ use std::thread;
 use std::thread::{JoinHandle};
 use std::time::{SystemTime, Duration};
 
-use i2cdev::linux::LinuxI2CError;
+use i2cdev::linux::{LinuxI2CError, LinuxI2CDevice};
+
+use i2cdev_bno055::{BNO055, BNO055_DEFAULT_ADDR, BNO055OperationMode, BNO055PowerMode};
 
 use pca9685::PCA9685;
 use mpu6050::{MPU6050, ACCEL_RANGE_2G, GYRO_RANGE_250DEG};
+use i2csensors::{Accelerometer, Gyroscope, Magnetometer, Thermometer, Vec3};
 
 pub const PWM_FREQ: f32 = 120.0;
 
@@ -29,8 +32,10 @@ pub enum RTCommand {
 
 pub struct RawSensorState {
     pub time: SystemTime,
-    pub gyro: (f32, f32, f32),
-    pub accel: (f32, f32, f32),
+    pub gyro: Vec3,
+    pub accel: Vec3,
+    pub mag: Vec3,
+    pub orientation: Vec3,
     pub temp: f32,
     //TODO should PWM state be included?
 }
@@ -38,8 +43,10 @@ impl Default for RawSensorState {
     fn default() -> RawSensorState {
         RawSensorState {
             time: SystemTime::now(),
-            gyro: (0.0, 0.0, 0.0),
-            accel: (0.0, 0.0, 0.0),
+            gyro: Vec3::zeros(),
+            accel: Vec3::zeros(),
+            mag: Vec3::zeros(),
+            orientation: Vec3::zeros(),
             temp: 0.0,
         }
     }
@@ -50,27 +57,33 @@ pub fn create() -> Result<(JoinHandle<()>, Sender<RTCommand>, Receiver<Result<Ra
     let mut pca = PCA9685::default()?;
     pca.set_all_pwm_off()?;
     pca.set_pwm_freq(PWM_FREQ)?;
+
     // initialize MPU hardware
-    let mut mpu = MPU6050::new(0x68)?;
-    mpu.set_accel_range(ACCEL_RANGE_2G)?;
-    mpu.set_gyro_range(GYRO_RANGE_250DEG)?;
+    //let mut mpu = MPU6050::new(0x68)?;
+    //mpu.set_accel_range(ACCEL_RANGE_2G)?;
+    //mpu.set_gyro_range(GYRO_RANGE_250DEG)?;
+    let bno_dev = LinuxI2CDevice::new("/dev/i2c-1", BNO055_DEFAULT_ADDR)?;
+    let mut bno = BNO055::new(bno_dev)?;
+    bno.reset()?;
+    bno.set_external_crystal(true)?;
+
     // setup communication channels
     let (rt_tx, rx) = mpsc::channel();
     let (tx, rt_rx) = mpsc::channel();
     // setup the real time thread
     //TODO consider setting system thread priority
-    let handle = thread::spawn(|| real_time_loop(pca, mpu, rt_tx, rt_rx));
+    let handle = thread::spawn(|| real_time_loop(pca, bno, rt_tx, rt_rx));
 
     Ok((handle, tx, rx))
 }
 
-fn real_time_loop(mut pca: PCA9685, mut mpu: MPU6050,
+fn real_time_loop(mut pca: PCA9685, mut bno: BNO055<LinuxI2CDevice>,
                   tx: Sender<Result<RawSensorState, LinuxI2CError>>,
                   rx: Receiver<RTCommand>) {
     let target_interval = Duration::new(0,16666667);
     loop {
         let time = SystemTime::now();
-        if let Err(_) = tx.send(collect_data(&mut mpu, &mut pca, time.clone())) {
+        if let Err(_) = tx.send(collect_data(&mut bno, &mut pca, time.clone())) {
             return; //Main thread ended / dropped the handle
         }
         'commands: loop {
@@ -98,11 +111,13 @@ fn real_time_loop(mut pca: PCA9685, mut mpu: MPU6050,
     }
 }
 
-fn collect_data(mpu: &mut MPU6050, _pca: &mut PCA9685, time: SystemTime) -> Result<RawSensorState, LinuxI2CError> {
-    let accel = mpu.get_accel_data(true)?;
-    let gyro = mpu.get_gyro_data()?;
-    let temp = mpu.get_temp()?;
+fn collect_data(bno: &mut BNO055<LinuxI2CDevice>, _pca: &mut PCA9685, time: SystemTime) -> Result<RawSensorState, LinuxI2CError> {
+    let orientation = bno.get_euler()?;
+    let accel = bno.acceleration_reading()?;
+    let gyro = bno.angular_rate_reading()?;
+    let mag = bno.magnetic_reading()?;
+    let temp = bno.temperature_celsius()?;
     Ok(RawSensorState {
-        accel, time, gyro, temp,
+        orientation, accel, mag, time, gyro, temp,
     })
 }

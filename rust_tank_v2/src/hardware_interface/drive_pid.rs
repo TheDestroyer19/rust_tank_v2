@@ -52,7 +52,7 @@ impl DrivePid {
     pub fn update(&mut self,
                   sensors: &SensorState) {
         let dt = sensors.duration().as_fractional_secs() as f32;
-        let actual = sensors.gyro().2;
+        let actual = sensors.gyro().y;
         let error = self.target_deg_per_s - actual;
         self.integral += error * dt;
         let derivative = (error - self.prev_error) / dt;
