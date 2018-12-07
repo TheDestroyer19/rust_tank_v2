@@ -10,7 +10,7 @@ mod real_time;
 mod sensor_processing;
 mod drive_pid;
 
-pub use self::real_time::{RTCommand, RawSensorState};
+pub use self::real_time::{RTCommand, RawSensorState, Vec3};
 pub use self::sensor_processing::SensorState;
 
 

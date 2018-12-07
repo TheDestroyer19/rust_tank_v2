@@ -14,7 +14,7 @@ use termion::raw::IntoRawMode;
 use termion::raw::RawTerminal;
 use termion::{clear, color, cursor, style};
 
-use i2csensors::Vec3;
+use super::hardware_interface::Vec3;
 
 pub fn new() -> io::Result<(Input, Output)> {
     let output = Output::new()?;

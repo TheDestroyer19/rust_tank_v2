@@ -17,13 +17,13 @@ pub struct TcpInterface {
     tx: Sender<Response>,
 }
 
-fn createTcpHandler<A: ToSocketAddrs>(addr: A) -> Result<(JoinHandle<()>, Sender<Response>, Receiver<Command>), io::Error> {
+fn create_tcp_handler<A: ToSocketAddrs>(addr: A) -> Result<(JoinHandle<()>, Sender<Response>, Receiver<Command>), io::Error> {
     let listener = TcpListener::bind(addr)?;
     let (tx, handler_rx) = mpsc::channel();
     let (handler_tx, rx) = mpsc::channel();
 
     //Start tcp thread
-    let join_handle = thread::spawn(|| {
+    let join_handle = thread::spawn(move || {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
@@ -38,5 +38,5 @@ fn createTcpHandler<A: ToSocketAddrs>(addr: A) -> Result<(JoinHandle<()>, Sender
     });
 
     //return
-    return Ok((join_handle, rx, tx))
+    return Ok((join_handle, tx, rx))
 }

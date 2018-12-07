@@ -11,7 +11,8 @@ use i2cdev_bno055::{BNO055, BNO055_DEFAULT_ADDR, BNO055OperationMode, BNO055Powe
 
 use pca9685::PCA9685;
 use mpu6050::{MPU6050, ACCEL_RANGE_2G, GYRO_RANGE_250DEG};
-use i2csensors::{Accelerometer, Gyroscope, Magnetometer, Thermometer, Vec3};
+use i2csensors::{Accelerometer, Gyroscope, Magnetometer, Thermometer};
+use i2csensors::Vec3 as iVec3;
 
 pub const PWM_FREQ: f32 = 120.0;
 
@@ -30,6 +31,22 @@ pub enum RTCommand {
     //TODO consider creating an enum fof each i2c device individually
 }
 
+#[derive(Serialize, Deserialize, Default, Copy, Clone)]
+pub struct Vec3 {
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+}
+impl From<iVec3> for Vec3 {
+    fn from(t: iVec3) -> Vec3 {
+        Vec3 {
+            x: t.x,
+            y: t.y,
+            z: t.z
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct RawSensorState {
     pub time: SystemTime,
@@ -44,10 +61,10 @@ impl Default for RawSensorState {
     fn default() -> RawSensorState {
         RawSensorState {
             time: SystemTime::now(),
-            gyro: Vec3::zeros(),
-            accel: Vec3::zeros(),
-            mag: Vec3::zeros(),
-            orientation: Vec3::zeros(),
+            gyro: Vec3::default(),
+            accel: Vec3::default(),
+            mag: Vec3::default(),
+            orientation: Vec3::default(),
             temp: 0.0,
         }
     }
@@ -113,10 +130,10 @@ fn real_time_loop(mut pca: PCA9685, mut bno: BNO055<LinuxI2CDevice>,
 }
 
 fn collect_data(bno: &mut BNO055<LinuxI2CDevice>, _pca: &mut PCA9685, time: SystemTime) -> Result<RawSensorState, LinuxI2CError> {
-    let orientation = bno.get_euler()?;
-    let accel = bno.acceleration_reading()?;
-    let gyro = bno.angular_rate_reading()?;
-    let mag = bno.magnetic_reading()?;
+    let orientation = Vec3::from(bno.get_euler()?);
+    let accel = Vec3::from(bno.acceleration_reading()?);
+    let gyro = Vec3::from(bno.angular_rate_reading()?);
+    let mag = Vec3::from(bno.magnetic_reading()?);
     let temp = bno.temperature_celsius()?;
     Ok(RawSensorState {
         orientation, accel, mag, time, gyro, temp,

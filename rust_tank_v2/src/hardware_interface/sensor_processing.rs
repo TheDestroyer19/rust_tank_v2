@@ -2,9 +2,8 @@ use std::time::{Duration, SystemTime};
 
 use floating_duration::TimeAsFloat;
 
-use super::real_time::RawSensorState;
+use super::real_time::{RawSensorState, Vec3};
 
-use i2csensors::Vec3;
 
 #[derive(Serialize, Deserialize)]
 pub struct SensorState {
@@ -41,12 +40,12 @@ impl SensorState {
         //self.roll = y.atan2(z);
         //self.pitch = (-x / (y * self.roll.sin() + z * self.roll.cos())).atan();
         //self.yaw += new_state.gyro.2 * dt.as_fractional_secs() as f32;
-        let angles = new_state.orientation;
+        let angles = new_state.orientation.clone();
         self.pitch = angles.x;
         self.yaw = angles.y;
         self.roll = angles.z;
         self.duration = dt;
-        self.time = new_state.time;
+        self.time = new_state.time.clone();
         self.raw_state = new_state;
     }
 
