@@ -5,6 +5,9 @@ extern crate floating_duration;
 extern crate i2cdev;
 extern crate i2cdev_bno055;
 extern crate i2csensors;
+extern crate serde;
+#[macro_use] extern crate serde_derive;
+extern crate serde_json;
 
 use std::thread;
 use std::time::Duration;
@@ -18,22 +21,22 @@ use terminal::{ InputError};
 
 mod hardware_interface;
 use hardware_interface::{RTHandle};
+mod tcp_interface;
 //Old modules below
-//mod hw_tests;
 
 
 fn main() {
 
 
     //initialize hardware
-    let mut interface = RTHandle::initialize().unwrap();
+    let mut hw_interface = RTHandle::initialize().unwrap();
 
-    match run(&mut interface) {
+    match run(&mut hw_interface) {
         Err(e) => println!("{}", e),
         _ => (),
     };
 
-    interface.close();
+    hw_interface.close();
 }
 
 fn run(interface: &mut RTHandle) -> std::io::Result<()> {
@@ -61,12 +64,10 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
                 },
                 Key::Char('d') => {
                     turn -= 5.0;
-                    if turn < -45.0 {turn = -45.0; }
                     interface.set_drive(speed, turn);
                 },
                 Key::Char('a') => {
                     turn += 5.0;
-                    if turn > 45.0 {turn = 45.0; }
                     interface.set_drive(speed, turn);
                 },
                 Key::Char('z') => {
@@ -94,9 +95,9 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
         }
         output.draw_motors(speed, turn, degrees)?;
         output.draw_sensors(
-            interface.state().accel(), interface.state().gyro(),
-            interface.state().pitch() * 180.0 / PI, interface.state().roll() * 180.0 / PI,
-            interface.state().yaw(),
+            interface.sensor_state().accel(), interface.sensor_state().gyro(),
+            interface.sensor_state().pitch() * 180.0 / PI, interface.sensor_state().roll() * 180.0 / PI,
+            interface.sensor_state().yaw(),
         )?;
         thread::sleep(Duration::from_millis(16));
     }

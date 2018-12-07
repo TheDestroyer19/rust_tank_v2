@@ -35,11 +35,11 @@ impl RTHandle {
             = real_time::create()?;
 
         //TODO tune drive
-        let drive_pid = drive_pid::DrivePid::new(0.01, 0.0, 0.0);
+        let drive_pid = drive_pid::DrivePid::new(0.02, 0.05, 0.0);
 
         Ok(RTHandle {
             rx, tx,
-            handle: handle,
+            handle,
             sensor_state: SensorState::default(),
             drive_pid,
         })
@@ -97,7 +97,7 @@ impl RTHandle {
         self.drive_pid.set_target(power, turn);
     }
 
-    pub fn state(&self) -> &SensorState {
+    pub fn sensor_state(&self) -> &SensorState {
         &self.sensor_state
     }
 

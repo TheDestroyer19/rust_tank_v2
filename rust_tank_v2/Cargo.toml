@@ -8,6 +8,10 @@ mpu6050 = { path = "../mpu6050" }
 pca9685 = { path = "../pca9685" }
 termion = "1.5.1"
 floating-duration = "0.1.2"
+i2cdev = "0.4.0"
+serde = "1.0.80"
+serde_derive = "1.0.80"
+serde_json = "1.0.33"
 i2cdev = "0.3.2"
 i2csensors = "0.1.2"
 i2cdev_bno055 = "0.1.3"
