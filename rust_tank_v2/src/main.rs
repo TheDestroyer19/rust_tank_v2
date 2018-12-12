@@ -22,6 +22,7 @@ use terminal::{ InputError};
 mod hardware_interface;
 use hardware_interface::{RTHandle};
 mod tcp_interface;
+use tcp_interface::TcpInterface;
 //Old modules below
 
 
@@ -29,7 +30,10 @@ fn main() {
 
 
     //initialize hardware
-    let mut hw_interface = RTHandle::initialize().unwrap();
+    let mut hw_interface = RTHandle::initialize()
+        .expect("Failed to initialize HW interface");
+    let mut tcp_interface = TcpInterface::new("0.0.0.0:27272")
+        .expect("Failed to initialize TCP interface");
 
     match run(&mut hw_interface) {
         Err(e) => println!("{}", e),

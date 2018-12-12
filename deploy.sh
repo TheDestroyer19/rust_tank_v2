@@ -13,4 +13,4 @@ scp target/arm-unknown-linux-gnueabihf/debug/rust_tank_v2 pi@raspberrypi.local:~
 
 #tell remote to start program
 echo "Starting Program" &&
-ssh -t pi@raspberrypi.local "RUST_BACKTRACE=1 ./debug_rust_tank"
+ssh -t pi@raspberrypi.local "sudo RUST_BACKTRACE=1 ./debug_rust_tank 2> msgs.txt"

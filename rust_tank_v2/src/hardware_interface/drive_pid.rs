@@ -67,7 +67,7 @@ impl DrivePid {
             b += full;
         }
         let v = if a < b {-a} else {b};
-        eprintln!("\n{} - {} = {}", x, y, v);
+        //eprintln!("\n{} - {} = {}", x, y, v);
         a
     }
 

@@ -1,11 +1,6 @@
 use std::time::{Duration, SystemTime};
 
-use floating_duration::TimeAsFloat;
-
 use super::real_time::{RawSensorState, Vec3};
-
-use std::f32::consts::PI;
-
 
 #[derive(Serialize, Deserialize)]
 pub struct SensorState {

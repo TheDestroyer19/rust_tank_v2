@@ -7,10 +7,9 @@ use std::time::{SystemTime, Duration};
 
 use i2cdev::linux::{LinuxI2CError, LinuxI2CDevice};
 
-use i2cdev_bno055::{BNO055, BNO055_DEFAULT_ADDR, BNO055OperationMode, BNO055PowerMode};
+use i2cdev_bno055::{BNO055, BNO055_DEFAULT_ADDR, BNO055OperationMode};
 
 use pca9685::PCA9685;
-use mpu6050::{MPU6050, ACCEL_RANGE_2G, GYRO_RANGE_250DEG};
 use i2csensors::{Accelerometer, Gyroscope, Magnetometer, Thermometer};
 use i2csensors::Vec3 as iVec3;
 
