@@ -14,7 +14,7 @@ use serde_json;
 use self::messages::*;
 
 pub struct TcpInterface {
-    commandQueue: VecDeque<Command>,
+    command_queue: VecDeque<Command>,
     rx: Receiver<Command>,
     tx: Sender<Response>,
 }
@@ -23,13 +23,14 @@ impl TcpInterface {
     pub fn new<A: ToSocketAddrs>(addr: A) -> Result<TcpInterface, io::Error> {
         let listener = TcpListener::bind(addr)?;
         let (tx, handler_rx) = mpsc::channel();
+        let handler_rx_loopback = tx.clone();
         let (handler_tx, rx) = mpsc::channel();
 
         //Start tcp thread
-        let join_handle = thread::spawn(move || tcp_handler(listener, handler_rx, tx.clone(), handler_tx));
+        let join_handle = thread::spawn(move || tcp_handler(listener, handler_rx, handler_rx_loopback, handler_tx));
 
-        let commandQueue = VecDeque::new();
-        return Ok(TcpInterface { commandQueue, rx, tx})
+        let command_queue = VecDeque::new();
+        return Ok(TcpInterface { command_queue, rx, tx})
     }
 }
 
@@ -58,8 +59,12 @@ fn tcp_handler(listener: TcpListener, rx: Receiver<Response>, rx_loopback: Sende
                     return;
                 });
 
-                read_handle.join();
-                write_handle.join();
+                if let Err(_) = read_handle.join() {
+                    eprintln!("TCP Read thread panicked");
+                }
+                if let Err(_) = write_handle.join() {
+                    eprintln!("TCP Read thread panicked");
+                }
             },
             Err(e) => {
                 eprintln!("{:?}", e);
