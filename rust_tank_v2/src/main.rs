@@ -11,10 +11,10 @@ extern crate serde_json;
 
 use std::thread;
 use std::time::Duration;
-use std::f32::consts::PI;
 
 use termion::event::Key;
 
+use std::f32::consts::PI;
 
 mod terminal;
 use terminal::{ InputError};
@@ -63,11 +63,17 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
                     interface.set_drive(speed, turn);
                 },
                 Key::Char('d') => {
-                    turn -= 5.0;
+                    turn += PI / 4.0;
                     interface.set_drive(speed, turn);
+                    if turn >= 2.0 * PI {
+                        turn -= 2.0 * PI;
+                    }
                 },
                 Key::Char('a') => {
-                    turn += 5.0;
+                    turn -= PI / 4.0;
+                    if turn < 0.0 {
+                        turn += 2.0 * PI;
+                    }
                     interface.set_drive(speed, turn);
                 },
                 Key::Char('z') => {
@@ -96,7 +102,7 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
         output.draw_motors(speed, turn, degrees)?;
         output.draw_sensors(
             interface.sensor_state().accel(), interface.sensor_state().gyro(),
-            interface.sensor_state().pitch() * 180.0 / PI, interface.sensor_state().roll() * 180.0 / PI,
+            interface.sensor_state().pitch(), interface.sensor_state().roll(),
             interface.sensor_state().yaw(),
         )?;
         thread::sleep(Duration::from_millis(16));

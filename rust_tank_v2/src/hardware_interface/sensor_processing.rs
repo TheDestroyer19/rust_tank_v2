@@ -4,6 +4,8 @@ use floating_duration::TimeAsFloat;
 
 use super::real_time::{RawSensorState, Vec3};
 
+use std::f32::consts::PI;
+
 
 #[derive(Serialize, Deserialize)]
 pub struct SensorState {
@@ -36,14 +38,10 @@ impl SensorState {
         //TODO consider rolling average for most values.
         let dt = new_state.time.duration_since(self.raw_state.time)
             .unwrap_or(Duration::new(0, 16666667));
-        //let (x, y, z) = new_state.accel;
-        //self.roll = y.atan2(z);
-        //self.pitch = (-x / (y * self.roll.sin() + z * self.roll.cos())).atan();
-        //self.yaw += new_state.gyro.2 * dt.as_fractional_secs() as f32;
         let angles = new_state.orientation.clone();
-        self.pitch = angles.x;
-        self.yaw = angles.y;
-        self.roll = angles.z;
+        self.yaw = angles.x;
+        self.pitch = angles.z;
+        self.roll = angles.y;
         self.duration = dt;
         self.time = new_state.time.clone();
         self.raw_state = new_state;

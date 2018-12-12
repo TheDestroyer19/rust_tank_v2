@@ -35,7 +35,7 @@ impl RTHandle {
             = real_time::create()?;
 
         //TODO tune drive
-        let drive_pid = drive_pid::DrivePid::new(0.02, 0.05, 0.0);
+        let drive_pid = drive_pid::DrivePid::new(1.0, 0.000, 0.06);
 
         Ok(RTHandle {
             rx, tx,

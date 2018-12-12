@@ -84,6 +84,7 @@ pub fn create() -> Result<(JoinHandle<()>, Sender<RTCommand>, Receiver<Result<Ra
     let mut bno = BNO055::new(bno_dev)?;
     bno.reset()?;
     bno.set_external_crystal(true)?;
+    bno.set_mode(BNO055OperationMode::Ndof)?;
 
     // setup communication channels
     let (rt_tx, rx) = mpsc::channel();

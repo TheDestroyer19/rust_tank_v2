@@ -6,8 +6,8 @@ use super::real_time::RTCommand;
 const BIAS: f32 = 0.001;
 
 const MOT_LPWM: u8 = 15;
-const MOT_LA: u8 = 13;
-const MOT_LB: u8 = 14;
+const MOT_LA: u8 = 14;
+const MOT_LB: u8 = 13;
 const MOT_RPWM: u8 = 10;
 const MOT_RA: u8 = 11;
 const MOT_RB: u8 = 12;
@@ -49,11 +49,33 @@ impl DrivePid {
         //TODO should error & integral be reset?
     }
 
+    /// Calculates the difference between two angles
+    fn circular_difference(x: f32, y: f32) -> f32 {
+        use std::f32::consts::PI;
+        let half = PI;
+        let full = 2.0 * PI;
+        let mut a = x - y;
+        let mut b = y - x;
+        if a > half {
+            a -= full;
+        } else if a < -half {
+            a += full;
+        }
+        if b > half {
+            b -= full;
+        } else if b < -half {
+            b += full;
+        }
+        let v = if a < b {-a} else {b};
+        eprintln!("\n{} - {} = {}", x, y, v);
+        a
+    }
+
     pub fn update(&mut self,
                   sensors: &SensorState) {
         let dt = sensors.duration().as_fractional_secs() as f32;
         let actual = sensors.yaw();
-        let error = self.target_deg_per_s - actual;
+        let error = Self::circular_difference(self.target_deg_per_s, actual);
         self.integral += error * dt;
         let derivative = (error - self.prev_error) / dt;
         self.output = self.k_porportional * error
@@ -63,9 +85,9 @@ impl DrivePid {
     }
 
     pub fn get_pwm_commands(&self) -> Vec<super::RTCommand> {
-        if self.target_power == 0.0 && self.target_deg_per_s == 0.0 {
-            return vec![RTCommand::SetPwmOff(MOT_LPWM), RTCommand::SetPwmOff(MOT_RPWM)];
-        }
+        //if self.target_power == 0.0 && self.target_deg_per_s == 0.0 {
+        //    return vec![RTCommand::SetPwmOff(MOT_LPWM), RTCommand::SetPwmOff(MOT_RPWM)];
+        //}
         let mut commands = Vec::with_capacity(6);
         //calculate relative power of each motor, clamped to [-1 to 1]
         let lpow = (self.target_power - self.output).max(-1.0).min(1.0);
