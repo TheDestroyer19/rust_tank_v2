@@ -49,6 +49,10 @@ impl DrivePid {
         //TODO should error & integral be reset?
     }
 
+    pub fn target_power(&self) -> f32 {
+        self.target_power
+    }
+
     /// Calculates the difference between two angles
     fn circular_difference(x: f32, y: f32) -> f32 {
         use std::f32::consts::PI;

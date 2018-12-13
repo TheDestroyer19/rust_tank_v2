@@ -12,6 +12,7 @@ pub struct SensorState {
     roll: f32,
     yaw: f32,
     pitch: f32,
+    speed: f32,
 }
 
 impl Default for SensorState {
@@ -23,12 +24,13 @@ impl Default for SensorState {
             roll: 0.0,
             yaw: 0.0,
             pitch: 0.0,
+            speed: 0.0,
         }
     }
 }
 
 impl SensorState {
-    pub fn update(&mut self, new_state: RawSensorState) {
+    pub fn update(&mut self, new_state: RawSensorState, speed: f32) {
         //TODO do processing on state
         //TODO consider rolling average for most values.
         let dt = new_state.time.duration_since(self.raw_state.time)
@@ -40,6 +42,7 @@ impl SensorState {
         self.duration = dt;
         self.time = new_state.time.clone();
         self.raw_state = new_state;
+        self.speed = speed;
     }
 
     pub fn pitch(&self) -> f32 {
@@ -60,6 +63,10 @@ impl SensorState {
 
     pub fn time(&self) -> &SystemTime {
         &self.time
+    }
+
+    pub fn speed(&self) -> f32 {
+        self.speed
     }
 
     /// Returns the value from the gyro after conversion into deg/s

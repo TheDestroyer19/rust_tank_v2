@@ -60,7 +60,7 @@ impl RTHandle {
         'queue: loop {
             match next {
                 Ok(new_state) => {
-                    self.sensor_state.update(new_state);
+                    self.sensor_state.update(new_state, self.drive_pid.target_power());
                     self.drive_pid.update(&self.sensor_state);
                 },
                 Err(err) => {
