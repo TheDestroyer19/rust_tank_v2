@@ -181,10 +181,11 @@ fn tcp_handler(listener: TcpListener,
                                 Response::UserMsg(s) => s,
                                 Response::Ok => String::from("Ok"),
                                 Response::BadCommand(s) => format!("Invalid Command: \"{}\"", s),
-                                Response::SensorState(s) => format!("DT: {}\tSpeed: {}\tHeading: {}",
+                                Response::SensorState(s) => format!("DT: {}\tSpeed: {}\tHeading: {}\tSonar: {}cm",
                                                                     s.duration().as_float_secs(),
                                                                     s.speed(),
-                                                                    s.yaw()),
+                                                                    s.yaw(),
+                                                                    s.sonar()),
                                 r => serde_json::to_string(&r).unwrap(),
                             }
                         } else {

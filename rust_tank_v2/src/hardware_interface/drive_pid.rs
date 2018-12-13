@@ -15,7 +15,7 @@ const MOT_RB: u8 = 12;
 /// Data storage for the PID controller
 pub struct DrivePid {
     target_power: f32,
-    target_deg_per_s: f32,
+    target_rad: f32,
     //pid variables
     //see http://robotsforroboticists.com/pid-control/
     prev_error: f32,
@@ -33,7 +33,7 @@ impl DrivePid {
             -> DrivePid {
         DrivePid {
             target_power: 0.0,
-            target_deg_per_s: 0.0,
+            target_rad: 0.0,
             k_porportional,
             k_integral,
             k_derivative,
@@ -43,14 +43,18 @@ impl DrivePid {
         }
     }
 
-    pub fn set_target(&mut self, power: f32, dps: f32) {
+    pub fn set_target(&mut self, power: f32, radians: f32) {
         self.target_power = power;
-        self.target_deg_per_s = dps;
+        self.target_rad = radians;
         //TODO should error & integral be reset?
     }
 
     pub fn target_power(&self) -> f32 {
         self.target_power
+    }
+
+    pub fn target_angle(&self) -> f32 {
+        self.target_rad
     }
 
     /// Calculates the difference between two angles
@@ -70,7 +74,7 @@ impl DrivePid {
         } else if b < -half {
             b += full;
         }
-        let v = if a < b {-a} else {b};
+        //let v = if a < b {-a} else {b};
         //eprintln!("\n{} - {} = {}", x, y, v);
         a
     }
@@ -79,7 +83,7 @@ impl DrivePid {
                   sensors: &SensorState) {
         let dt = sensors.duration().as_fractional_secs() as f32;
         let actual = sensors.yaw();
-        let error = Self::circular_difference(self.target_deg_per_s, actual);
+        let error = Self::circular_difference(self.target_rad, actual);
         self.integral += error * dt;
         let derivative = (error - self.prev_error) / dt;
         self.output = self.k_porportional * error

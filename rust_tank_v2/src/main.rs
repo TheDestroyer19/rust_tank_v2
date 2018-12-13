@@ -9,6 +9,7 @@ extern crate i2csensors;
 extern crate serde;
 #[macro_use] extern crate serde_derive;
 extern crate serde_json;
+extern crate sysfs_gpio;
 
 use std::thread;
 use std::time::Duration;
@@ -24,6 +25,7 @@ mod hardware_interface;
 use hardware_interface::{RTHandle};
 mod tcp_interface;
 use tcp_interface::{TcpInterface, messages::Command};
+use hardware_interface::RTEvent;
 //Old modules below
 
 
@@ -105,6 +107,7 @@ fn run(hw_interface: &mut RTHandle, tcp_interface: &mut TcpInterface) -> std::io
             match c {
                 Command::StopNow => {
                     speed = 0.0;
+                    hw_interface.set_drive(speed, turn);
                 },
                 Command::GetSensorState => {
                     tcp_interface.send_state(hw_interface.sensor_state());
@@ -113,8 +116,19 @@ fn run(hw_interface: &mut RTHandle, tcp_interface: &mut TcpInterface) -> std::io
             }
         }
 
-        for err in hw_interface.update(tcp_interface.auto_send_state(), tcp_interface) {
-            output.print_error(err)?;
+        for event in hw_interface.update(tcp_interface.auto_send_state(), tcp_interface) {
+            match event {
+                RTEvent::SonarProximity => {
+                    if speed > 0.0 {
+                        speed = 0.0;
+                        hw_interface.set_drive(speed, turn);
+                    }
+                    eprintln!("Object detected!");
+                },
+                RTEvent::Err(err) => {
+                    eprintln!("{}", err);
+                },
+            }
         }
         output.draw_motors(speed, turn, degrees)?;
         output.draw_sensors(

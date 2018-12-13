@@ -2,8 +2,12 @@
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, TryRecvError, Sender};
 use std::thread;
+use std::thread::sleep;
 use std::thread::{JoinHandle};
 use std::time::{SystemTime, Duration};
+
+use super::on_export;
+use sysfs_gpio::{Direction, Pin, Edge};
 
 use i2cdev::linux::{LinuxI2CError, LinuxI2CDevice};
 
@@ -28,6 +32,12 @@ pub enum RTCommand {
     /// Terminates the real time thread, should NOT be used outside of the close method.
     End,
     //TODO consider creating an enum fof each i2c device individually
+}
+
+/// Values that are sent from the sonar/i2c threads
+pub enum RTResponse {
+    I2C(Result<RawSensorState, LinuxI2CError>),
+    Sonar(f32, SystemTime),//in cm
 }
 
 #[derive(Serialize, Deserialize, Default, Copy, Clone)]
@@ -69,39 +79,40 @@ impl Default for RawSensorState {
     }
 }
 
-pub fn create() -> Result<(JoinHandle<()>, Sender<RTCommand>, Receiver<Result<RawSensorState, LinuxI2CError>>), LinuxI2CError> {
-    // initialize PWM hardware
-    let mut pca = PCA9685::default()?;
-    pca.set_all_pwm_off()?;
-    pca.set_pwm_freq(PWM_FREQ)?;
+pub fn create() -> Result<(JoinHandle<()>, JoinHandle<()>, Sender<RTCommand>, Receiver<RTResponse>), LinuxI2CError> {
 
-    // initialize MPU hardware
-    //let mut mpu = MPU6050::new(0x68)?;
-    //mpu.set_accel_range(ACCEL_RANGE_2G)?;
-    //mpu.set_gyro_range(GYRO_RANGE_250DEG)?;
-    let bno_dev = LinuxI2CDevice::new("/dev/i2c-1", BNO055_DEFAULT_ADDR)?;
-    let mut bno = BNO055::new(bno_dev)?;
-    bno.reset()?;
-    bno.set_external_crystal(true)?;
-    bno.set_mode(BNO055OperationMode::Ndof)?;
 
     // setup communication channels
-    let (rt_tx, rx) = mpsc::channel();
-    let (tx, rt_rx) = mpsc::channel();
+    let (i2c_tx, rx) = mpsc::channel();
+    let sonar_tx = i2c_tx.clone();
+    let (tx, i2c_rx) = mpsc::channel();
     // setup the real time thread
     //TODO consider setting system thread priority
-    let handle = thread::spawn(|| real_time_loop(pca, bno, rt_tx, rt_rx));
+    let i2c_handle = thread::spawn(|| rt_i2c_loop(i2c_tx, i2c_rx));
+    let sonar_handle = thread::spawn(|| rt_sonar_loop(sonar_tx));
 
-    Ok((handle, tx, rx))
+    Ok((i2c_handle, sonar_handle, tx, rx))
 }
 
-fn real_time_loop(mut pca: PCA9685, mut bno: BNO055<LinuxI2CDevice>,
-                  tx: Sender<Result<RawSensorState, LinuxI2CError>>,
-                  rx: Receiver<RTCommand>) {
+fn rt_i2c_loop(tx: Sender<RTResponse>,
+               rx: Receiver<RTCommand>) {
     let target_interval = Duration::new(0,16666667);
+
+    // initialize PWM hardware
+    let mut pca = PCA9685::default().unwrap();
+    pca.set_all_pwm_off().unwrap();
+    pca.set_pwm_freq(PWM_FREQ).unwrap();
+
+    // initialize MPU hardware
+    let bno = LinuxI2CDevice::new("/dev/i2c-1", BNO055_DEFAULT_ADDR).unwrap();
+    let mut bno = BNO055::new(bno).unwrap();
+    bno.reset().unwrap();
+    bno.set_external_crystal(true).unwrap();
+    bno.set_mode(BNO055OperationMode::Ndof).unwrap();
+
     loop {
         let time = SystemTime::now();
-        if let Err(_) = tx.send(collect_data(&mut bno, &mut pca, time.clone())) {
+        if let Err(_) = tx.send(RTResponse::I2C(collect_data(&mut bno, &mut pca, time.clone()))) {
             return; //Main thread ended / dropped the handle
         }
         'commands: loop {
@@ -114,7 +125,7 @@ fn real_time_loop(mut pca: PCA9685, mut bno: BNO055<LinuxI2CDevice>,
                 Ok(RTCommand::StopAllMotors) => pca.set_all_pwm_off(),
                 Ok(RTCommand::End) => return, //Main thread asked us to stop
             } {
-                if let Err(_) = tx.send(Err(e)) { return; } // main dropped its rx
+                if let Err(_) = tx.send(RTResponse::I2C(Err(e))) { return; } // main dropped its rx
             }
         }
         //Sync
@@ -138,4 +149,58 @@ fn collect_data(bno: &mut BNO055<LinuxI2CDevice>, _pca: &mut PCA9685, time: Syst
     Ok(RawSensorState {
         orientation, accel, mag, time, gyro, temp,
     })
+}
+
+fn rt_sonar_loop(tx: Sender<RTResponse>) {
+    let trigger_pin = Pin::new(18);
+    let echo_pin = Pin::new(25);
+    trigger_pin
+        .with_exported(|| {
+            echo_pin.with_exported(|| {
+                on_export::wait();
+                trigger_pin.set_direction(Direction::Out).unwrap();
+                echo_pin.set_direction(Direction::In).unwrap();
+                echo_pin.set_edge(Edge::BothEdges).unwrap();
+                let mut echo_pin_puller = echo_pin.get_poller().unwrap();
+
+                'sonar: loop {
+                    //run trigger
+                    //println!("Sending trigger");
+                    trigger_pin.set_value(1).unwrap();
+                    sleep(Duration::from_millis(1));
+                    trigger_pin.set_value(0).unwrap();
+
+                    //wait for signal
+                    if echo_pin_puller.poll(500).unwrap() == None {
+                        //println!("No read - trying again");
+                        continue;
+                    }
+                    let start = SystemTime::now();
+
+                    //wait for end
+                    match echo_pin_puller.poll(500) {
+                        Ok(Some(_)) => {
+                            //calculate how long
+                            let end = SystemTime::now();
+                            let time = end.duration_since(start).unwrap();
+
+                            //Convert to distance
+                            let distance_cm = (time.subsec_nanos() as f32 * 34300.0) / 2000000000.0;
+                            //println!("Distance is {} cm", distance_cm);
+                            if let Err(_) = tx.send(RTResponse::Sonar(distance_cm, end)) {
+                                break 'sonar; //send only fails when the other end hung up
+                            }
+
+                            //let sonar sleep a little
+                            sleep(Duration::from_micros(10000));
+                        },
+                        Err(e) => panic!("Something weird happened {:?}", e),
+                        Ok(None) => (), //println!("Echo timed out"),
+                    }
+                }
+
+                Ok(())
+            })
+        })
+        .unwrap();
 }

@@ -10,7 +10,7 @@ mod real_time;
 mod sensor_processing;
 mod drive_pid;
 
-pub use self::real_time::{RTCommand, RawSensorState, Vec3};
+pub use self::real_time::{RTCommand, RTResponse, RawSensorState, Vec3};
 pub use self::sensor_processing::SensorState;
 use ::tcp_interface::TcpInterface;
 
@@ -18,11 +18,19 @@ use ::tcp_interface::TcpInterface;
 /// Interface to the real time thread
 /// This is currently responsible for managing communication with i2c devices
 pub struct RTHandle {
-    rx: Receiver<Result<RawSensorState, LinuxI2CError>>,
+    rx: Receiver<RTResponse>,
     tx: Sender<RTCommand>,
-    handle: JoinHandle<()>,
+    i2c_handle: JoinHandle<()>,
+    sonar_handle: JoinHandle<()>,
     sensor_state: SensorState,
     drive_pid: drive_pid::DrivePid,
+}
+
+pub enum RTEvent {
+    /// Something got too close to the front of the tank
+    SonarProximity,
+    /// Some non-fatal i2c error
+    Err(LinuxI2CError),
 }
 
 impl RTHandle {
@@ -32,7 +40,7 @@ impl RTHandle {
     /// thread that controls them.
     pub fn initialize() -> Result<RTHandle, LinuxI2CError> {
 
-        let (handle, tx, rx)
+        let (i2c_handle, sonar_handle, tx, rx)
             = real_time::create()?;
 
         //TODO tune drive
@@ -40,7 +48,7 @@ impl RTHandle {
 
         Ok(RTHandle {
             rx, tx,
-            handle,
+            i2c_handle, sonar_handle,
             sensor_state: SensorState::default(),
             drive_pid,
         })
@@ -49,9 +57,9 @@ impl RTHandle {
     /// Goes through all state updates received, and updates the current state
     /// Returns any IO errors that occured on the other thread since last call to update
     /// Blocks until a message is received
-    pub fn update(&mut self, send_updates: bool, tcp_interface: &mut TcpInterface) -> Vec<LinuxI2CError> {
+    pub fn update(&mut self, send_updates: bool, tcp_interface: &mut TcpInterface) -> Vec<RTEvent> {
 
-        let mut errors = vec![];
+        let mut events = vec![];
         let mut next = match self.rx.recv() {
             Ok(rss) => rss,
             Err(_) => {
@@ -60,15 +68,23 @@ impl RTHandle {
         };
         'queue: loop {
             match next {
-                Ok(new_state) => {
-                    self.sensor_state.update(new_state, self.drive_pid.target_power());
+                RTResponse::I2C(Ok(new_state)) => {
+                    let event = self.sensor_state.update(new_state, self.drive_pid.target_power());
                     self.drive_pid.update(&self.sensor_state);
                     if send_updates {
                         tcp_interface.send_state(&self.sensor_state);
                     }
+                    if let Some(e) = event {
+                        events.push(e);
+                    }
                 },
-                Err(err) => {
-                    errors.push(err);
+                RTResponse::I2C(Err(err)) => {
+                    events.push(RTEvent::Err(err));
+                },
+                RTResponse::Sonar(cm, time) => {
+                    if let Some(event) = self.sensor_state.set_sonar((cm, time)) {
+                        events.push(event);
+                    }
                 }
             }
             next = match self.rx.try_recv() {
@@ -83,7 +99,7 @@ impl RTHandle {
         for msg in self.drive_pid.get_pwm_commands() {
             self.send_command(msg);
         }
-        errors
+        events
     }
 
     /// Sends a command to an I2C device
@@ -114,6 +130,24 @@ impl RTHandle {
     pub fn close(mut self) {
         self.send_command(RTCommand::StopAllMotors);
         self.send_command(RTCommand::End);
-        self.handle.join().expect("Real time thread paniced!");
+        self.i2c_handle.join().expect("Real time I2C thread paniced!");
+        self.sonar_handle.join().expect("Real time Sonar thread paniced!");
+    }
+}
+
+/// Fix for quirk of RPI
+pub mod on_export {
+    use std::thread::sleep;
+    use std::time::Duration;
+
+    const SLEEP_HEURISTIC_MILLIS: u64 = 50;
+
+    /// wait ~50ms after exporting this pin.
+    /// if you set_direction *immediately* after
+    /// entering this closure, without your
+    /// pin having been exported on a *previous*
+    /// run, you'll crash.
+    pub fn wait() {
+        sleep(Duration::from_millis(SLEEP_HEURISTIC_MILLIS))
     }
 }

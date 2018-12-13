@@ -1,6 +1,10 @@
 use std::time::{Duration, SystemTime};
 
 use super::real_time::{RawSensorState, Vec3};
+use super::RTEvent;
+
+const SONAR_TOO_CLOSE: f32 = 10.0;
+const SONAR_SAMPLES: f32 = 16.0;
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct SensorState {
@@ -13,6 +17,8 @@ pub struct SensorState {
     yaw: f32,
     pitch: f32,
     speed: f32,
+    /// Sonar distance in CM
+    sonar: (f32, SystemTime),
 }
 
 impl Default for SensorState {
@@ -25,12 +31,14 @@ impl Default for SensorState {
             yaw: 0.0,
             pitch: 0.0,
             speed: 0.0,
+            sonar: (0.0, SystemTime::now()),
         }
     }
 }
 
 impl SensorState {
-    pub fn update(&mut self, new_state: RawSensorState, speed: f32) {
+    /// Returns Ok when no issue, Err when sonar is too close
+    pub fn update(&mut self, new_state: RawSensorState, speed: f32) -> Option<RTEvent> {
         //TODO do processing on state
         //TODO consider rolling average for most values.
         let dt = new_state.time.duration_since(self.raw_state.time)
@@ -43,6 +51,7 @@ impl SensorState {
         self.time = new_state.time.clone();
         self.raw_state = new_state;
         self.speed = speed;
+        return None;
     }
 
     pub fn pitch(&self) -> f32 {
@@ -67,6 +76,21 @@ impl SensorState {
 
     pub fn speed(&self) -> f32 {
         self.speed
+    }
+
+    pub fn set_sonar(&mut self, sonar: (f32, SystemTime)) -> Option<RTEvent> {
+        //self.sonar.0 = self.sonar.0 + sonar.0 / SONAR_SAMPLES - self.sonar.0 / SONAR_SAMPLES;
+        self.sonar.0 = (self.sonar.0 + sonar.0) / 2.0;
+        self.sonar.1 = sonar.1;
+        if self.sonar.0 < SONAR_TOO_CLOSE {
+            Some(RTEvent::SonarProximity)
+        } else {
+            None
+        }
+    }
+
+    pub fn sonar(&self) -> f32 {
+        self.sonar.0
     }
 
     /// Returns the value from the gyro after conversion into deg/s
