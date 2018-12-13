@@ -22,7 +22,7 @@ use terminal::{ InputError};
 mod hardware_interface;
 use hardware_interface::{RTHandle};
 mod tcp_interface;
-use tcp_interface::TcpInterface;
+use tcp_interface::{TcpInterface, messages::Command};
 //Old modules below
 
 
@@ -35,7 +35,7 @@ fn main() {
     let mut tcp_interface = TcpInterface::new("0.0.0.0:27272")
         .expect("Failed to initialize TCP interface");
 
-    match run(&mut hw_interface) {
+    match run(&mut hw_interface, &mut tcp_interface) {
         Err(e) => println!("{}", e),
         _ => (),
     };
@@ -43,7 +43,7 @@ fn main() {
     hw_interface.close();
 }
 
-fn run(interface: &mut RTHandle) -> std::io::Result<()> {
+fn run(hw_interface: &mut RTHandle, tcp_interface: &mut TcpInterface) -> std::io::Result<()> {
     let (mut input, mut output) = terminal::new()?;
 
     output.draw_static()?;
@@ -59,16 +59,16 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
                 Key::Char('w') => {
                     speed += 0.25;
                     if speed > 1.0 {speed = 1.0; }
-                    interface.set_drive(speed, turn);
+                    hw_interface.set_drive(speed, turn);
                 },
                 Key::Char('s') => {
                     speed -= 0.25;
                     if speed < -1.0 {speed = -1.0; }
-                    interface.set_drive(speed, turn);
+                    hw_interface.set_drive(speed, turn);
                 },
                 Key::Char('d') => {
                     turn += PI / 4.0;
-                    interface.set_drive(speed, turn);
+                    hw_interface.set_drive(speed, turn);
                     if turn >= 2.0 * PI {
                         turn -= 2.0 * PI;
                     }
@@ -78,12 +78,12 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
                     if turn < 0.0 {
                         turn += 2.0 * PI;
                     }
-                    interface.set_drive(speed, turn);
+                    hw_interface.set_drive(speed, turn);
                 },
                 Key::Char('z') => {
                     turn = 0.0;
                     speed = 0.0;
-                    interface.stop();
+                    hw_interface.stop();
                 },
                 /*Key::Char('q') => {
                     degrees -= 5;
@@ -100,14 +100,23 @@ fn run(interface: &mut RTHandle) -> std::io::Result<()> {
             Ok(None) => (),
             Err(InputError::Disconnected) => break,
         }
-        for err in interface.update() {
+        while let Some(c) = tcp_interface.next_command() {
+            match c {
+                Command::StopNow => {
+                    speed = 0.0;
+                },
+                c => eprintln!("Unimplemented command: {:?}", c),
+            }
+        }
+
+        for err in hw_interface.update() {
             output.print_error(err)?;
         }
         output.draw_motors(speed, turn, degrees)?;
         output.draw_sensors(
-            interface.sensor_state().accel(), interface.sensor_state().gyro(),
-            interface.sensor_state().pitch(), interface.sensor_state().roll(),
-            interface.sensor_state().yaw(),
+            hw_interface.sensor_state().accel(), hw_interface.sensor_state().gyro(),
+            hw_interface.sensor_state().pitch(), hw_interface.sensor_state().roll(),
+            hw_interface.sensor_state().yaw(),
         )?;
         thread::sleep(Duration::from_millis(16));
     }

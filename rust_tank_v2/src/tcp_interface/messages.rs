@@ -3,6 +3,7 @@ use std::time::Duration;
 use super::super::hardware_interface::SensorState;
 
 
+#[derive(Debug)]
 pub enum Command {
     /// STOP all motors, immediately
     /// This also will clear all pending commands.
@@ -19,11 +20,13 @@ pub enum Command {
     Move{speed: f64, target_yaw: Option<f64>, end: Option<EndCondition>},
 }
 
+#[derive(Debug)]
 pub enum EndCondition {
     Time(Duration),
     AngleReached,
 }
 
+#[derive(Serialize)]
 pub enum Response {
     /// Command was processed successfully
     Ok,
@@ -31,4 +34,6 @@ pub enum Response {
     BadCommand,
     /// Current state of sensors
     SensorState(SensorState),
+    /// Raw text to be displayed to user
+    UserMsg(String),
 }
