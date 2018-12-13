@@ -26,6 +26,7 @@ use hardware_interface::{RTHandle};
 mod tcp_interface;
 use tcp_interface::{TcpInterface, messages::Command};
 use hardware_interface::RTEvent;
+use std::time::SystemTime;
 //Old modules below
 
 
@@ -120,14 +121,30 @@ fn run(hw_interface: &mut RTHandle, tcp_interface: &mut TcpInterface) -> std::io
             match event {
                 RTEvent::SonarProximity => {
                     if speed > 0.0 {
-                        speed = 0.0;
+                        //TODO remove hacky autopilot
+                        speed = -0.5;
                         hw_interface.set_drive(speed, turn);
+                        hw_interface.sensor_state().set_target_time(SystemTime::now() + Duration::from_millis(500));
                     }
                     eprintln!("Object detected!");
                 },
                 RTEvent::Err(err) => {
                     eprintln!("{}", err);
                 },
+                RTEvent::TargetAngleReached => {
+                    //TODO tell tcp that angle was reached
+                    speed = 0.5;
+                    hw_interface.set_drive(speed, turn);
+                },
+                RTEvent::TargetTimeReached => {
+                    //TODO tell tcp that time was reached
+                    //TODO remove hacky code
+                    speed = 0.0;
+                    turn = (turn + PI * 55.0 / 180.0);
+                    if turn > PI * 2.0 {turn -= PI * 2.0; }
+                    hw_interface.set_drive(speed, turn);
+                    hw_interface.sensor_state().set_target_angle(turn);
+                }
             }
         }
         output.draw_motors(speed, turn, degrees)?;

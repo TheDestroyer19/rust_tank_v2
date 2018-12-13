@@ -29,6 +29,8 @@ pub struct RTHandle {
 pub enum RTEvent {
     /// Something got too close to the front of the tank
     SonarProximity,
+    TargetAngleReached,
+    TargetTimeReached,
     /// Some non-fatal i2c error
     Err(LinuxI2CError),
 }
@@ -44,7 +46,7 @@ impl RTHandle {
             = real_time::create()?;
 
         //TODO tune drive
-        let drive_pid = drive_pid::DrivePid::new(1.0, 0.000, 0.06);
+        let drive_pid = drive_pid::DrivePid::new(2.0, 1.0, 0.0);
 
         Ok(RTHandle {
             rx, tx,
@@ -117,8 +119,8 @@ impl RTHandle {
         self.drive_pid.set_target(power, turn);
     }
 
-    pub fn sensor_state(&self) -> &SensorState {
-        &self.sensor_state
+    pub fn sensor_state(&mut self) -> &mut SensorState {
+        &mut self.sensor_state
     }
 
     /// Stops all the motors
