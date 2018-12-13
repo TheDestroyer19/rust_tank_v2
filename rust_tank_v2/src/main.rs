@@ -1,3 +1,4 @@
+#![feature(duration_float)]
 extern crate pca9685;
 extern crate mpu6050;
 extern crate termion;
@@ -105,11 +106,14 @@ fn run(hw_interface: &mut RTHandle, tcp_interface: &mut TcpInterface) -> std::io
                 Command::StopNow => {
                     speed = 0.0;
                 },
+                Command::GetSensorState => {
+                    tcp_interface.send_state(hw_interface.sensor_state());
+                }
                 c => eprintln!("Unimplemented command: {:?}", c),
             }
         }
 
-        for err in hw_interface.update() {
+        for err in hw_interface.update(tcp_interface.auto_send_state(), tcp_interface) {
             output.print_error(err)?;
         }
         output.draw_motors(speed, turn, degrees)?;

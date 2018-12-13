@@ -11,9 +11,6 @@ pub enum Command {
     /// Ask the tank to give the current state of onboard sensors
     // TODO should I split this up into multiple components?
     GetSensorState,
-    /// Sets how often the tank will send the sensor state.
-    /// Send none to stop sending states.
-    SetSensorUpdateInterval{ interval: Option<Duration>},
     /// Moves the tank in a strait line, until end condition is met.
     /// speed ranges from -1 to 1. Positive speeds for forward, negative for backward.
     /// Target_yaw is the desired angle in degrees
@@ -31,7 +28,7 @@ pub enum Response {
     /// Command was processed successfully
     Ok,
     /// Command failed to parse
-    BadCommand,
+    BadCommand(String),
     /// Current state of sensors
     SensorState(SensorState),
     /// Raw text to be displayed to user

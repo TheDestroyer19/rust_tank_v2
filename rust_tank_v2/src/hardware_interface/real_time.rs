@@ -46,7 +46,7 @@ impl From<iVec3> for Vec3 {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct RawSensorState {
     pub time: SystemTime,
     pub gyro: Vec3,

@@ -12,6 +12,7 @@ mod drive_pid;
 
 pub use self::real_time::{RTCommand, RawSensorState, Vec3};
 pub use self::sensor_processing::SensorState;
+use ::tcp_interface::TcpInterface;
 
 
 /// Interface to the real time thread
@@ -48,7 +49,7 @@ impl RTHandle {
     /// Goes through all state updates received, and updates the current state
     /// Returns any IO errors that occured on the other thread since last call to update
     /// Blocks until a message is received
-    pub fn update(&mut self) -> Vec<LinuxI2CError> {
+    pub fn update(&mut self, send_updates: bool, tcp_interface: &mut TcpInterface) -> Vec<LinuxI2CError> {
 
         let mut errors = vec![];
         let mut next = match self.rx.recv() {
@@ -62,6 +63,9 @@ impl RTHandle {
                 Ok(new_state) => {
                     self.sensor_state.update(new_state, self.drive_pid.target_power());
                     self.drive_pid.update(&self.sensor_state);
+                    if send_updates {
+                        tcp_interface.send_state(&self.sensor_state);
+                    }
                 },
                 Err(err) => {
                     errors.push(err);

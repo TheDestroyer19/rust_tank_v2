@@ -2,7 +2,7 @@ use std::time::{Duration, SystemTime};
 
 use super::real_time::{RawSensorState, Vec3};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SensorState {
     /// The time between the most recent update and the previous
     duration: Duration,
