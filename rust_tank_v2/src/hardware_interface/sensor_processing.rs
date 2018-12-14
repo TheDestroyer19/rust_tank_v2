@@ -6,7 +6,8 @@ use super::RTEvent;
 use std::cmp::Ord;
 use std::f32::consts::PI;
 
-const SONAR_TOO_CLOSE: f32 = 10.0;
+const SONAR_TOO_CLOSE: f32 = 7.5;
+const PITCH_TOO_NEG: f32 = -0.2;
 const SONAR_SAMPLES: f32 = 16.0;
 const ANGLE_EPSILON: f32 = PI / 32.0;
 
@@ -60,6 +61,10 @@ impl SensorState {
         self.raw_state = new_state;
         self.speed = speed;
 
+        if self.pitch < PITCH_TOO_NEG {
+            return Some(RTEvent::SteepIncline);
+        }
+
         if let Some(target) = self.target_time {
             if self.time >= target {
                 self.target_time = None;
@@ -76,7 +81,7 @@ impl SensorState {
             }
         }
 
-        return None;
+        None
     }
 
     pub fn pitch(&self) -> f32 {

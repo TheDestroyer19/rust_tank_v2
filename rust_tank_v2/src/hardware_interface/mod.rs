@@ -29,6 +29,7 @@ pub struct RTHandle {
 pub enum RTEvent {
     /// Something got too close to the front of the tank
     SonarProximity,
+    SteepIncline,
     TargetAngleReached,
     TargetTimeReached,
     /// Some non-fatal i2c error

@@ -124,16 +124,25 @@ fn run(hw_interface: &mut RTHandle, tcp_interface: &mut TcpInterface) -> std::io
                         //TODO remove hacky autopilot
                         speed = -0.5;
                         hw_interface.set_drive(speed, turn);
-                        hw_interface.sensor_state().set_target_time(SystemTime::now() + Duration::from_millis(500));
+                        hw_interface.sensor_state().set_target_time(SystemTime::now() + Duration::from_millis(750));
+                        eprintln!("Detected nearby object");
                     }
-                    eprintln!("Object detected!");
+                },
+                RTEvent::SteepIncline => {
+                    if speed > 0.0 {
+                        //TODO remove hacky autopilot
+                        speed = -0.5;
+                        hw_interface.set_drive(speed, turn);
+                        hw_interface.sensor_state().set_target_time(SystemTime::now() + Duration::from_millis(750));
+                        eprintln!("Too steep a climb");
+                    }
                 },
                 RTEvent::Err(err) => {
                     eprintln!("{}", err);
                 },
                 RTEvent::TargetAngleReached => {
                     //TODO tell tcp that angle was reached
-                    speed = 0.5;
+                    speed = 0.75;
                     hw_interface.set_drive(speed, turn);
                 },
                 RTEvent::TargetTimeReached => {
